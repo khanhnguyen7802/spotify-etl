@@ -52,6 +52,7 @@ def request_authorization():
     return redirect(auth_url)
 
 
+# only used for the first login, after that, refresh token is used to get new access tokens
 @app.route('/callback')
 def callback():
   """
@@ -85,6 +86,7 @@ def callback():
   return redirect('/')
 
 
+# NOT NECESSARY IF WE MIGRATE TO AZURE VM FOR AUTOMATION 
 @app.route('/refresh_token')
 def refresh():
   """

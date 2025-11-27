@@ -9,11 +9,61 @@ from app.models.SpotifyAlbum import SpotifyAlbum
 from app.models.SpotifyArtist import SpotifyArtist
 from app.models.SpotifyPlayer import SpotifyPlayer
 from app.models.SpotifyTrack import SpotifyTrack
+from app.auth.SpotifyAuth import SpotifyAuth
 
 import pandas as pd 
 
+def init():
+  """
+  Initialize SpotifyAuth instance by loading existing token info from auth_token.json file.
+  """
+  token_info = json.load(open(f"{os.getcwd()}/app/auth/auth_token.json"))
+
+  spotify_auth = SpotifyAuth(
+    client_id=token_info.get("_client_id"),
+    client_secret=token_info.get("_client_secret")
+  )
+  
+  spotify_auth.set_token_info(
+    access_token=token_info.get("_access_token"),
+    refresh_token=token_info.get("_refresh_token"),
+    access_token_expiration_time=token_info.get("_access_token_expiration_time")
+  )
+
+  return spotify_auth
+
+def refresh_token(spotify_auth):
+  """
+  Refresh the access token using the refresh token.
+  Send a POST request to the /api/token endpoint.
+
+  :param spotify_auth: SpotifyAuth instance.
+  :return:
+    If success, returns 200 OK and new token_info (contains access_token, token_type, expires_in, scope).
+    If failure, returns error message.
+  """
+  if datetime.now().timestamp() > spotify_auth.access_token_expiration_time: # refresh_token is expired
+      new_token_info = spotify_auth.refresh_new_token()
+
+      if "error" in new_token_info: # failure
+        print(new_token_info)
+      else:
+        print("Token refreshed successfully")
+        
+        # TODO: check again the path on VM
+        with open(f"{os.getcwd()}/auth_token.json", "w") as f:
+          json.dump(spotify_auth.__dict__, f, indent=2)
+
 
 def get_recently_played(token_info):
+  """
+  Get user's recently played tracks.
+
+  :param token_info: Dictionary containing access token and its expiration time. 
+  :return:
+    If success, returns recently played tracks in JSON format.
+    If failure, returns error message.
+  """
   if token_info.get("_access_token") is None: # check if access_token is still valid
     return "You don't have access, please log in!", 401  # otherwise, re-login
 
@@ -31,6 +81,15 @@ def get_recently_played(token_info):
   return recently_played
 
 def get_artist(artist_id, token_info):
+  """
+  Get artist information by artist ID.
+
+  :param artist_id: Spotify artist ID.
+  :param token_info: Dictionary containing access token and its expiration time.
+  :return:
+    If success, returns artist information in JSON format.
+    If failure, returns error message.
+  """
   if token_info.get("_access_token") is None: # check if access_token is still valid
     return "You don't have access, please log in!", 401  # otherwise, re-login
 
@@ -91,6 +150,9 @@ def retrieve_lists():
   return artist_list, album_list, track_list, playback_list
 
 def main():
+  spotify_auth = init()
+  refresh_token(spotify_auth)
+
   artist_list, album_list, track_list, playback_list = retrieve_lists()
   class_names = ["artist", "album", "track", "playback"]
 

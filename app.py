@@ -25,9 +25,7 @@ spotify_auth = SpotifyAuth(client_id=client_id, client_secret=client_secret)
 def index():
   if spotify_auth.access_token is not None:
     return '''
-        <h1>Welcome to the Spotify API Integration!</h1>
-        <a href="/playlists">Playlists</a>
-        <a href="/recentlyPlayed">Recently Played</a>
+        <h1>Welcome to the Spotify API Integration! You're logged in</h1>
     '''
   
 
@@ -75,80 +73,14 @@ def callback():
       print(token_info)
     else:
       print("Token exchanged successfully")
-      session["logged_in"] = True
 
+      # export token_info to a json file
       with open(f"{os.getcwd()}/app/auth/auth_token.json", "w") as f:
         json.dump(spotify_auth.__dict__, f, indent=2)
 
     # print("Session expires at:", spotify_auth.access_token_expiration_time)
 
   return redirect('/')
-
-
-@app.route('/refresh_token')
-def refresh():
-  """
-  Refresh the access token using the refresh token.
-  Send a POST request to the /api/token endpoint.
-
-  :return:
-    If success, returns 200 OK and new token_info (contains access_token, token_type, expires_in, scope).
-    If failure, returns error message.
-  """
-  if spotify_auth.refresh_token is None: # refresh_token is missing, login to retrieve it
-    return redirect('/login')
-
-  if datetime.now().timestamp() > spotify_auth.access_token_expiration_time: # refresh_token is expired
-    new_token_info = spotify_auth.refresh_new_token()
-
-    if "error" in new_token_info: # failure
-      print(new_token_info)
-    else:
-      print("Token refreshed successfully")
-      
-      with open(f"{os.getcwd()}/auth_token.json", "w") as f:
-        json.dump(spotify_auth.__dict__, f, indent=2)
-
-  return redirect('/')
-
-
-@app.route('/playlists')
-def get_playlists():
-  if spotify_auth.access_token is None: # check if access_token is still valid
-    return redirect('/login') # otherwise, re-login
-
-  if datetime.now().timestamp() > spotify_auth.access_token_expiration_time: # the token is expired
-    return redirect('/refresh_token') # redirect to refresh the token
-   
-  # get user's playlists by including the following header 
-  headers = {
-    "Authorization": f"Bearer {spotify_auth.access_token}"
-  }
-
-  response = requests.get(f"{api_url_base}/me/playlists", headers=headers)  # current user's playlists
-  playlists = response.json()
-
-  return jsonify(playlists)
-
-
-@app.route('/recentlyPlayed')
-def get_recently_played():
-  if spotify_auth.access_token is None: # check if access_token is still valid
-    return redirect('/login') # otherwise, re-login
-
-  if datetime.now().timestamp() > spotify_auth.access_token_expiration_time: # the token is expired
-    return redirect('/refresh_token') # redirect to refresh the token
-
-  # get user's recently played tracks by including the following header
-  headers = {
-    "Authorization": f"Bearer {spotify_auth.access_token}"
-  }
-
-  response = requests.get(f"{api_url_base}/me/player/recently-played?limit=50", headers=headers) # current user's recently played tracks
-  recently_played = response.json()
-
-  return jsonify(recently_played)
-
 
 
 if __name__ == '__main__':

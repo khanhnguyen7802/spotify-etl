@@ -1,2 +1,3 @@
 .env
-./auth/auth_token.json
+./src/auth/auth_token.json
+__pycache__/

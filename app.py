@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from flask import Flask, json, request, redirect, jsonify, session
 import requests
 from datetime import datetime
-from app.auth.SpotifyAuth import SpotifyAuth
+from src.auth.SpotifyAuth import SpotifyAuth
 
 load_dotenv()
 

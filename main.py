@@ -4,12 +4,12 @@ from datetime import datetime
 import json
 import requests
 
-import app.helper.utils as utils
-from app.models.SpotifyAlbum import SpotifyAlbum
-from app.models.SpotifyArtist import SpotifyArtist
-from app.models.SpotifyPlayer import SpotifyPlayer
-from app.models.SpotifyTrack import SpotifyTrack
-from app.auth.SpotifyAuth import SpotifyAuth
+import src.helper.utils as utils
+from src.models.SpotifyAlbum import SpotifyAlbum
+from src.models.SpotifyArtist import SpotifyArtist
+from src.models.SpotifyPlayer import SpotifyPlayer
+from src.models.SpotifyTrack import SpotifyTrack
+from src.auth.SpotifyAuth import SpotifyAuth
 
 import pandas as pd 
 
@@ -23,7 +23,7 @@ def init():
     client_id=token_info.get("_client_id"),
     client_secret=token_info.get("_client_secret")
   )
-  
+
   spotify_auth.set_token_info(
     access_token=token_info.get("_access_token"),
     refresh_token=token_info.get("_refresh_token"),

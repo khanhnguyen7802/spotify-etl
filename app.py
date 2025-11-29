@@ -75,7 +75,7 @@ def callback():
       print("Token exchanged successfully")
 
       # export token_info to a json file
-      with open(f"{os.getcwd()}/app/auth/auth_token.json", "w") as f:
+      with open(f"{os.getcwd()}/src/auth/auth_token.json", "w") as f:
         json.dump(spotify_auth.__dict__, f, indent=2)
 
     # print("Session expires at:", spotify_auth.access_token_expiration_time)

@@ -161,7 +161,6 @@ def main():
   track_list_to_csv = [track.to_dict() for track in track_list]
   playback_list_to_csv = [playback.to_dict() for playback in playback_list]
 
-  class_names = ["artist", "album", "track", "playback"]
   records = [artist_list_to_csv, album_list_to_csv, track_list_to_csv, playback_list_to_csv]
 
   for class_name, record in zip(class_names, records):

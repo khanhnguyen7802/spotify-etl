@@ -29,7 +29,6 @@ def index():
     return '''
         <h1>Welcome to the Spotify API Integration! You're logged in</h1>
         <a href="/confirm-download">Click here to download your auth token</a>
-        <a href="/confirm-download">Click here to download your auth token</a>
     '''
   
 
@@ -82,34 +81,18 @@ def callback():
       with open(f"{os.getcwd()}/src/auth/auth_token.json", "w") as f:
         json.dump(spotify_auth.__dict__, f, indent=2)
       
-      return '''
-      <script>
-        if (confirm("Authentication Successful! Would you like to download your auth token?")) {
-        window.location.href = "/confirm-download";
-        } else {
-        window.location.href = "/";
-        }
-      </script>
-      '''
 
     return redirect('/')
 
 
-  @app.route('/confirm-download')
-  def confirm_download():
-    """
-    Send the auth_token.json file for download.
-    """
-    token_path = f"{os.getcwd()}/src/auth/auth_token.json"
-    return send_file(token_path, as_attachment=True, download_name="auth_token.json")
+@app.route('/confirm-download')
+def confirm_download():
+  """
+  Send the auth_token.json file for download.
+  """
+  token_path = f"{os.getcwd()}/src/auth/auth_token.json"
+  return send_file(token_path, as_attachment=True, download_name="auth_token.json")
 
-  @app.route('/confirm-download')
-  def confirm_download():
-    """
-    Send the auth_token.json file for download.
-    """
-    token_path = f"{os.getcwd()}/src/auth/auth_token.json"
-    return send_file(token_path, as_attachment=True, download_name="auth_token.json")
 
 if __name__ == '__main__':
   app.run(host='127.0.0.1', port=5000, debug=True)

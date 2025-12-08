@@ -5,6 +5,7 @@ import requests
 from datetime import datetime
 from src.auth.SpotifyAuth import SpotifyAuth
 from flask import send_file
+from flask import send_file
 
 load_dotenv()
 
@@ -27,6 +28,7 @@ def index():
   if spotify_auth.access_token is not None:
     return '''
         <h1>Welcome to the Spotify API Integration! You're logged in</h1>
+        <a href="/confirm-download">Click here to download your auth token</a>
         <a href="/confirm-download">Click here to download your auth token</a>
     '''
   
@@ -78,7 +80,7 @@ def callback():
       
       # export token_info to a json file
       with open(f"{os.getcwd()}/src/auth/auth_token.json", "w") as f:
-      json.dump(spotify_auth.__dict__, f, indent=2)
+        json.dump(spotify_auth.__dict__, f, indent=2)
       
       return '''
       <script>
@@ -92,6 +94,14 @@ def callback():
 
     return redirect('/')
 
+
+  @app.route('/confirm-download')
+  def confirm_download():
+    """
+    Send the auth_token.json file for download.
+    """
+    token_path = f"{os.getcwd()}/src/auth/auth_token.json"
+    return send_file(token_path, as_attachment=True, download_name="auth_token.json")
 
   @app.route('/confirm-download')
   def confirm_download():

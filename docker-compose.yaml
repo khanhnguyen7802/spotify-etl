@@ -49,10 +49,12 @@ x-airflow-common:
   # In order to add custom dependencies or upgrade provider distributions you can use your extended image.
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
-  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.1.3}
-  # build: .
-  # env_file:
-  #   - ${ENV_FILE_PATH:-.env}
+  # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.1.3}
+  build:
+    context: .
+    dockerfile: ./Dockerfile
+  env_file:
+    - .env
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
@@ -66,16 +68,31 @@ x-airflow-common:
     # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
     # yamllint enable rule:line-length
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
-    # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
-    # for other purpose (development, test and especially production usage) build/extend Airflow image.
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
     # The following line can be used to set a custom config file, stored in the local config folder
-    AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+    AIRFLOW_CONFIG: '/opt/airflow/spotify_project/src/pipelines/config/airflow.cfg'
+    # Point to DAGs folder in the mounted project
+    AIRFLOW__CORE__DAGS_FOLDER: '/opt/airflow/spotify_project/src/pipelines/dags'
+    # Point to logs folder in the mounted project
+    AIRFLOW__LOGGING__BASE_LOG_FOLDER: "/opt/airflow/spotify_project/src/pipelines/logs"
+    # AIRFLOW__LOGGING__DAG_PROCESSOR_CHILD_PROCESS_LOG_DIRECTORY: "/opt/airflow/spotify_project/src/pipelines/logs/dag_processor"
+    # Spotify API Configuration (loaded from .env file)
+    TOKEN_URL: https://accounts.spotify.com/api/token
+    AUTH_URL: https://accounts.spotify.com/authorize
+    API_URL: https://api.spotify.com/v1
+    CLIENT_ID: ${CLIENT_ID}
+    CLIENT_SECRET: ${CLIENT_SECRET}
+    REDIRECT_URI: http://127.0.0.1:5000/callback
+  
   volumes:
-    - ${AIRFLOW_PROJ_DIR:-.}/dags:/opt/airflow/dags
-    - ${AIRFLOW_PROJ_DIR:-.}/logs:/opt/airflow/logs
-    - ${AIRFLOW_PROJ_DIR:-.}/config:/opt/airflow/config
-    - ${AIRFLOW_PROJ_DIR:-.}/plugins:/opt/airflow/plugins
+    # Mount the entire repository root for development
+    - ${AIRFLOW_PROJ_DIR:-.}/src:/opt/airflow/spotify_project/src
+
+    # Host directory: ${AIRFLOW_PROJ_DIR:-.}/data maps to /opt/airflow/spotify_project/data
+    - ${AIRFLOW_PROJ_DIR:-.}/data:/opt/airflow/spotify_project/data
+    
+    # Named volume for additional backup/persistence
+    - spotify-data-volume:/opt/airflow/spotify_project/data_backup
+
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
@@ -100,8 +117,8 @@ services:
 
 
   airflow-apiserver:
-    <<: *airflow-common
-    command: api-server
+    <<: *airflow-common   # ← "Copy all config from airflow-common here"
+    command: api-server   # ← Plus override/add this
     ports:
       - "8080:8080"
     healthcheck:
@@ -118,8 +135,8 @@ services:
 
 
   airflow-scheduler:
-    <<: *airflow-common
-    command: scheduler
+    <<: *airflow-common  # ← "Copy all config from airflow-common here"
+    command: scheduler   # ← Plus override/add this
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
       interval: 30s
@@ -133,8 +150,8 @@ services:
         condition: service_completed_successfully
 
   airflow-dag-processor:
-    <<: *airflow-common
-    command: dag-processor
+    <<: *airflow-common       # ← "Copy all config from airflow-common here"
+    command: dag-processor    # ← Plus override/add this
     healthcheck:
       test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
       interval: 30s
@@ -147,11 +164,9 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
-
-
   airflow-init:
-    <<: *airflow-common
-    entrypoint: /bin/bash
+    <<: *airflow-common     # ← "Copy all config from airflow-common here"
+    entrypoint: /bin/bash   # ← Override entrypoint
     # yamllint disable rule:line-length
     command:
       - -c
@@ -202,14 +217,17 @@ services:
         echo
         echo "Creating missing opt dirs if missing:"
         echo
-        mkdir -v -p /opt/airflow/{logs,dags,plugins,config}
+        mkdir -v -p /opt/airflow/spotify_project/src/pipelines/{dags,config,logs,plugins}
         echo
+        echo "Change ownership of the newly created directories to ${AIRFLOW_UID}:0"
+        echo
+        chown -v -R "${AIRFLOW_UID}:0" /opt/airflow/spotify_project/src/pipelines/{dags,config,logs,plugins} || true
         echo "Airflow version:"
         /entrypoint airflow version
         echo
         echo "Files in shared volumes:"
         echo
-        ls -la /opt/airflow/{logs,dags,plugins,config}
+        ls -la /opt/airflow/spotify_project/src/pipelines/
         echo
         echo "Running airflow config list to create default config file if missing."
         echo
@@ -217,19 +235,15 @@ services:
         echo
         echo "Files in shared volumes:"
         echo
-        ls -la /opt/airflow/{logs,dags,plugins,config}
+        ls -la /opt/airflow/spotify_project/src/pipelines/
         echo
-        echo "Change ownership of files in /opt/airflow to ${AIRFLOW_UID}:0"
+        echo "Change ownership of mounted project directory to ${AIRFLOW_UID}:0"
         echo
-        chown -R "${AIRFLOW_UID}:0" /opt/airflow/
-        echo
-        echo "Change ownership of files in shared volumes to ${AIRFLOW_UID}:0"
-        echo
-        chown -v -R "${AIRFLOW_UID}:0" /opt/airflow/{logs,dags,plugins,config}
+        chown -v -R "${AIRFLOW_UID}:0" /opt/airflow/spotify_project || true
         echo
         echo "Files in shared volumes:"
         echo
-        ls -la /opt/airflow/{logs,dags,plugins,config}
+        ls -la /opt/airflow/spotify_project/src/pipelines/
 
     # yamllint enable rule:line-length
     environment:
@@ -238,11 +252,9 @@ services:
       _AIRFLOW_WWW_USER_CREATE: 'true'
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
-      _PIP_ADDITIONAL_REQUIREMENTS: ''
     user: "0:0"
-
-
 
 
 volumes:
   postgres-db-volume:
+  spotify-data-volume:

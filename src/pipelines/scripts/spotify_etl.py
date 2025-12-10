@@ -23,13 +23,13 @@ def get_recently_played(token_info):
   :param token_info: Dictionary containing access token and its expiration time. 
   :return:
     If success, returns recently played tracks in JSON format.
-    If failure, returns error message.
+    If failure, raises an Exception.
   """
   if token_info.get("_access_token") is None: # check if access_token is still valid
-    return "You don't have access, please log in!", 401  # otherwise, re-login
+    raise Exception("You don't have access, please log in!")
 
   if datetime.now().timestamp() > token_info.get("_access_token_expiration_time"): # the token is expired
-    return "Session timed out, please refresh the page or log in again.", 401  # refresh the token
+    raise Exception("Session timed out, please refresh the page or log in again.")
 
   # get user's recently played tracks by including the following header
   headers = {
@@ -50,13 +50,13 @@ def get_artist(artist_id, token_info):
   :param token_info: Dictionary containing access token and its expiration time.
   :return:
     If success, returns artist information in JSON format.
-    If failure, returns error message.
+    If failure, raises an Exception.
   """
   if token_info.get("_access_token") is None: # check if access_token is still valid
-    return "You don't have access, please log in!", 401  # otherwise, re-login
+    raise Exception("You don't have access, please log in!")
 
   if datetime.now().timestamp() > token_info.get("_access_token_expiration_time"): # the token is expired
-    return "Session timed out, please refresh the page or log in again.", 401  # refresh the token
+    raise Exception("Session timed out, please refresh the page or log in again.")
   
   headers = {
     "Authorization": f"Bearer {token_info.get('_access_token')}"

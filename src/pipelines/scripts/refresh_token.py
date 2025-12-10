@@ -43,7 +43,8 @@ def refresh_token(spotify_auth):
     If success, returns 200 OK and new token_info (contains access_token, token_type, expires_in, scope).
     If failure, returns error message.
   """
-  if datetime.now().timestamp() > spotify_auth.access_token_expiration_time: # refresh_token is expired
+  # Refresh if expired or about to expire in the next 60 seconds
+  if datetime.now().timestamp() + 60 > spotify_auth.access_token_expiration_time: 
       new_token_info = spotify_auth.refresh_new_token()
 
       if "error" in new_token_info: # failure

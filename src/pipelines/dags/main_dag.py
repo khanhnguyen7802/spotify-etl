@@ -2,17 +2,6 @@ from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
 from datetime import datetime
 
-import src.helper.utils as utils
-from src.models.SpotifyAlbum import SpotifyAlbum
-from src.models.SpotifyArtist import SpotifyArtist
-from src.models.SpotifyPlayer import SpotifyPlayer
-from src.models.SpotifyTrack import SpotifyTrack
-from src.auth.SpotifyAuth import SpotifyAuth
-
-# Import your callable
-from src.pipelines.scripts.refresh_token import init, refresh_token
-from src.pipelines.scripts.spotify_etl import *
-
 # Create DAG
 dag = DAG(
     'my_pipeline',
@@ -25,6 +14,8 @@ dag = DAG(
 
 # Define task functions
 def task_authenticate(**context):
+    from src.pipelines.scripts.refresh_token import init, refresh_token
+    
     spotify_auth = init()
     refresh_token(spotify_auth)
     
@@ -38,6 +29,8 @@ def task_authenticate(**context):
     }
 
 def task_get_recently_played_tracks(**context):
+    from src.pipelines.scripts.spotify_etl import get_recently_played, extract_data
+    
     try:
         # Get task instance from context
         ti = context.get('task_instance')
@@ -84,6 +77,7 @@ def task_export_data(**context):
     ]
 
     for class_name, record in zip(class_names, records):
+        from src.pipelines.scripts.spotify_etl import export_to_csv
         export_to_csv(record, class_name)
     
     return "Data export completed successfully"

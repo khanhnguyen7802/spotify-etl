@@ -4,13 +4,7 @@ import json
 import requests
 
 import src.helper.utils as utils
-from src.models.SpotifyAlbum import SpotifyAlbum
-from src.models.SpotifyArtist import SpotifyArtist
-from src.models.SpotifyPlayer import SpotifyPlayer
-from src.models.SpotifyTrack import SpotifyTrack
 from src.auth.SpotifyAuth import SpotifyAuth
-
-import pandas as pd 
 
 TOKEN_FILE = "/opt/airflow/spotify_project/src/auth/auth_token.json"
 

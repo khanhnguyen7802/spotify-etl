@@ -75,6 +75,13 @@ x-airflow-common:
     # Point to logs folder in the mounted project
     AIRFLOW__LOGGING__BASE_LOG_FOLDER: "/opt/airflow/spotify_project/src/pipelines/logs"
     # AIRFLOW__LOGGING__DAG_PROCESSOR_CHILD_PROCESS_LOG_DIRECTORY: "/opt/airflow/spotify_project/src/pipelines/logs/dag_processor"
+    
+    # Optimization for low memory environment (4GB RAM)
+    AIRFLOW__SCHEDULER__PARSING_PROCESSES: 1 # limits the scheduler to parsing one DAG at a time
+    AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: 60 # 30s -> 60s. The scheduler will check for DAG updates less frequently
+    AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: 120
+    AIRFLOW__SCHEDULER__JOB_HEARTBEAT_SEC: 30
+    
     # Spotify API Configuration (loaded from .env file)
     TOKEN_URL: https://accounts.spotify.com/api/token
     AUTH_URL: https://accounts.spotify.com/authorize

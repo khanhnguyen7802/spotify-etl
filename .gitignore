@@ -1,2 +1,6 @@
 .env
-./auth/auth_token.json
+**/.env
+src/auth/auth_token.json
+__pycache__/
+src/pipelines/logs
+data/

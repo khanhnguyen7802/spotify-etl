@@ -11,49 +11,10 @@ from src.models.SpotifyPlayer import SpotifyPlayer
 from src.models.SpotifyTrack import SpotifyTrack
 from src.auth.SpotifyAuth import SpotifyAuth
 
-import pandas as pd 
+import pandas as pd
 
-def init():
-  """
-  Initialize SpotifyAuth instance by loading existing token info from auth_token.json file.
-  """
-  token_info = json.load(open(f"{os.getcwd()}/app/auth/auth_token.json"))
-
-  spotify_auth = SpotifyAuth(
-    client_id=token_info.get("_client_id"),
-    client_secret=token_info.get("_client_secret")
-  )
-
-  spotify_auth.set_token_info(
-    access_token=token_info.get("_access_token"),
-    refresh_token=token_info.get("_refresh_token"),
-    access_token_expiration_time=token_info.get("_access_token_expiration_time")
-  )
-
-  return spotify_auth
-
-def refresh_token(spotify_auth):
-  """
-  Refresh the access token using the refresh token.
-  Send a POST request to the /api/token endpoint.
-
-  :param spotify_auth: SpotifyAuth instance.
-  :return:
-    If success, returns 200 OK and new token_info (contains access_token, token_type, expires_in, scope).
-    If failure, returns error message.
-  """
-  if datetime.now().timestamp() > spotify_auth.access_token_expiration_time: # refresh_token is expired
-      new_token_info = spotify_auth.refresh_new_token()
-
-      if "error" in new_token_info: # failure
-        print(new_token_info)
-      else:
-        print("Token refreshed successfully")
-        
-        # TODO: check again the path on VM
-        with open(f"{os.getcwd()}/auth_token.json", "w") as f:
-          json.dump(spotify_auth.__dict__, f, indent=2)
-
+TOKEN_FILE = "/opt/airflow/spotify_project/src/auth/auth_token.json"
+DATA_DIR = "/opt/airflow/spotify_project/data"
 
 def get_recently_played(token_info):
   """
@@ -62,13 +23,13 @@ def get_recently_played(token_info):
   :param token_info: Dictionary containing access token and its expiration time. 
   :return:
     If success, returns recently played tracks in JSON format.
-    If failure, returns error message.
+    If failure, raises an Exception.
   """
   if token_info.get("_access_token") is None: # check if access_token is still valid
-    return "You don't have access, please log in!", 401  # otherwise, re-login
+    raise Exception("You don't have access, please log in!")
 
   if datetime.now().timestamp() > token_info.get("_access_token_expiration_time"): # the token is expired
-    return "Session timed out, please refresh the page or log in again.", 401  # refresh the token
+    raise Exception("Session timed out, please refresh the page or log in again.")
 
   # get user's recently played tracks by including the following header
   headers = {
@@ -80,6 +41,7 @@ def get_recently_played(token_info):
 
   return recently_played
 
+
 def get_artist(artist_id, token_info):
   """
   Get artist information by artist ID.
@@ -88,13 +50,13 @@ def get_artist(artist_id, token_info):
   :param token_info: Dictionary containing access token and its expiration time.
   :return:
     If success, returns artist information in JSON format.
-    If failure, returns error message.
+    If failure, raises an Exception.
   """
   if token_info.get("_access_token") is None: # check if access_token is still valid
-    return "You don't have access, please log in!", 401  # otherwise, re-login
+    raise Exception("You don't have access, please log in!")
 
   if datetime.now().timestamp() > token_info.get("_access_token_expiration_time"): # the token is expired
-    return "Session timed out, please refresh the page or log in again.", 401  # refresh the token
+    raise Exception("Session timed out, please refresh the page or log in again.")
   
   headers = {
     "Authorization": f"Bearer {token_info.get('_access_token')}"
@@ -105,16 +67,9 @@ def get_artist(artist_id, token_info):
 
   return artist_info
 
-def export_to_csv(records, filename):
-  df = pd.DataFrame(records)
-  df.to_csv(f"{os.getcwd()}/data/{filename}_{datetime.now().strftime('%d%m%Y')}.csv", index=False) # ddmmyyy
 
-def retrieve_lists():
-  token_info = json.load(open(f"{os.getcwd()}/app/auth/auth_token.json"))
+def extract_data(recent_played_tracks, token_info):
   
-  # it can happen that duplicate records will be saved
-  recent_played_tracks = get_recently_played(token_info)
-
   artist_list = []
   album_list = []
   track_list = []
@@ -149,13 +104,32 @@ def retrieve_lists():
 
   return artist_list, album_list, track_list, playback_list
 
-def main():
-  spotify_auth = init()
-  refresh_token(spotify_auth)
 
-  artist_list, album_list, track_list, playback_list = retrieve_lists()
+def export_to_csv(records, filename):
+  os.makedirs(f"{DATA_DIR}/{filename}", exist_ok=True) # similar to mkdir -p in linux 
+  os.makedirs(f"/opt/airflow/spotify_project/data_backup/{filename}", exist_ok=True) # Create backup volume directory
+
+  df = pd.DataFrame(records)
+
+  # Export to host-mounted directory
+  # e.g., data/track/track_ddmmyyyy_h.csv
+  output_file = f"{DATA_DIR}/{filename}/{filename}_{datetime.now().strftime('%d%m%Y')}_{datetime.now().strftime('%H')}.csv"
+  df.to_csv(output_file, index=False) 
+  print(f"✅ Data successfully exported to: {output_file}")
+
+  # Also export to Docker named volume for backup
+  backup_file = f"/opt/airflow/spotify_project/data_backup/{filename}/{filename}_{datetime.now().strftime('%d%m%Y')}_{datetime.now().strftime('%H')}.csv"
+  df.to_csv(backup_file, index=False)
+  print(f"✅ Backup data successfully exported to volume: {backup_file}")
+
+
+
+if __name__ == '__main__':
+  token_info = json.load(open(TOKEN_FILE))
+  recently_played = get_recently_played(token_info) # it can happen that duplicate records will be saved
+  artist_list, album_list, track_list, playback_list = extract_data(recently_played)
+
   class_names = ["artist", "album", "track", "playback"]
-
   artist_list_to_csv = [artist.to_dict() for artist in artist_list]
   album_list_to_csv = [album.to_dict() for album in album_list]
   track_list_to_csv = [track.to_dict() for track in track_list]
@@ -165,14 +139,3 @@ def main():
 
   for class_name, record in zip(class_names, records):
     export_to_csv(record, class_name)
-
-
-if __name__ == '__main__':
-  main()
-
-
-
-
-    
-
-

@@ -1,4 +1,4 @@
-from app.models.SpotifyAlbum import SpotifyAlbum
+from src.models.SpotifyAlbum import SpotifyAlbum
 
 class SpotifyTrack:
     def __init__(self, id, album: SpotifyAlbum, artists, duration_ms, name:str, popularity):

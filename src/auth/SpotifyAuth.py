@@ -65,10 +65,11 @@ class SpotifyAuth:
     def refresh_token(self, value):
         self._refresh_token = value
 
-    def set_token_info(self, access_token, refresh_token, expires_in):
+    def set_token_info(self, access_token, refresh_token, access_token_expiration_time):
         self.access_token = access_token
         self.refresh_token = refresh_token
-        self.access_token_expiration_time = datetime.now().timestamp() + expires_in  # access token expiration time
+        self.access_token_expiration_time = access_token_expiration_time 
+        # datetime.now().timestamp() + expires_in  # access token expiration time
 
     def request_authorization(self):
         """
@@ -133,7 +134,7 @@ class SpotifyAuth:
         self.set_token_info(
           access_token=token_info["access_token"],
           refresh_token=token_info["refresh_token"],
-          expires_in=token_info["expires_in"]
+          access_token_expiration_time=datetime.now().timestamp() + token_info["expires_in"]
         )
 
         return token_info
@@ -170,10 +171,17 @@ class SpotifyAuth:
             return f"error with refreshing token with code {response.status_code}"
 
         new_token_info = response.json()
+        
+        # NOTE: Spotify may return a new refresh token. If so, update it. If not, keep the old one.
+        if 'refresh_token' in new_token_info:
+            new_refresh_token = new_token_info['refresh_token']
+        else:
+            new_refresh_token = self.refresh_token
+        
         self.set_token_info(
-          access_token=new_token_info["access_token"],
-          refresh_token=self.refresh_token,  # remain unchanged
-          expires_in=new_token_info["expires_in"]
+            access_token=new_token_info["access_token"],
+            refresh_token=new_refresh_token,  # might remain unchanged
+            access_token_expiration_time=datetime.now().timestamp() + new_token_info["expires_in"]
         )
 
         return new_token_info

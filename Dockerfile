@@ -24,8 +24,12 @@ COPY --chown=airflow:airflow . /opt/airflow/spotify_project
 # This makes 'from src.auth...' and 'from src.models...' work seamlessly
 RUN pip install --no-cache-dir -e /opt/airflow/spotify_project
 
-# Set environment variables for Airflow configuration
+# Python will look for imports in this order:
+# /opt/airflow/spotify_project
+# then /opt/airflow
+# then standard Python paths (site-packages, stdlib, etc.)
 ENV PYTHONPATH=/opt/airflow/spotify_project:/opt/airflow
+# Set environment variables for Airflow configuration
 ENV AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/spotify_project/src/pipelines/dags
 
 
